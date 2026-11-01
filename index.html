@@ -77,7 +77,6 @@
                 <p id="modalDesc" style="margin-bottom: 15px; color: #ccc;"></p>
                 <div class="player-placeholder">Видеоплеер появится позже</div>
                 
-                <!-- Блок для оценок и комментариев -->
                 <div class="interaction-section">
                     <h3>Ваш отзыв</h3>
                     <div class="auth-box" id="authSection">
@@ -120,23 +119,15 @@
     <script>
         // === 1. ВАШИ ДАННЫЕ ИЗ SUPABASE ===
         const SUPABASE_URL = 'https://rqxjseopwqrbegccvtz.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_ISGDhFlAiMLep30jIPbgLQ_MtFhCqtb';
+        // ВСТАВЬТЕ ВАШ КЛЮЧ НИЖЕ МЕЖДУ КАВЫЧКАМИ:
+        const SUPABASE_KEY = 'sb_publishable_ISGDhFIAiMLep30jIPbgLQ_MtFhCqtb';
         
         let supabaseClient = null;
-        if (SUPABASE_KEY !== 'ВСТАВЬТЕ_СЮДА_ВАШ_КЛЮЧ_НАЧИНАЮЩИЙСЯ_НА_sb_publishable') {
+        if (SUPABASE_KEY !== 'ВАШ_КЛЮЧ_ЗДЕСЬ') {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         }
 
-        // === 2. РАБОТА С АНИМЕ (AniList) ===
-        const query = `
-        query ($page: Int, $search: String) {
-          Page (page: $page, perPage: 24) {
-            media (search: $search, type: ANIME, sort: POPULARITY_DESC) {
-              id title { romaji english } coverImage { large } averageScore description genres
-            }
-          }
-        }`;
-
+        // === 2. РАБОТА С АНИМЕ (Через прокси) ===
         const grid = document.getElementById('animeGrid');
         const searchInput = document.getElementById('searchInput');
         let timeout = null;
@@ -145,32 +136,35 @@
         async function fetchAnime(searchTerm = '') {
             grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Загрузка...</p>';
             try {
-                // Используем Jikan API (MyAnimeList) вместо AniList
-                const url = searchTerm 
-                    ? `https://api.jikan.moe/v4/anime?q=${encodeURIComponent(searchTerm)}&limit=24` 
-                    : `https://api.jikan.moe/v4/top/anime?limit=24`;
+                // Запрос к AniList через публичный прокси-сервер (обходим CORS и блокировки)
+                const targetUrl = 'https://graphql.anilist.co';
+                const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
                 
-                const response = await fetch(url);
+                const query = `
+                query ($search: String) {
+                  Page (page: 1, perPage: 24) {
+                    media (search: $search, type: ANIME, sort: POPULARITY_DESC) {
+                      id title { romaji english } coverImage { large } averageScore description genres
+                    }
+                  }
+                }`;
+
+                const response = await fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ query: query, variables: { search: searchTerm } })
+                });
+                
                 const data = await response.json();
                 
-                // Jikan возвращает данные в data.data
-                if (data && data.data && data.data.length > 0) {
-                    // Преобразуем данные Jikan в формат, который ожидает ваш renderAnime
-                    const formattedAnime = data.data.map(item => ({
-                        id: item.mal_id,
-                        title: { romaji: item.title, english: item.title_english },
-                        coverImage: { large: item.images.jpg.large_image_url },
-                        averageScore: item.score ? item.score * 10 : null, // Приводим к шкале 100
-                        description: item.synopsis,
-                        genres: item.genres ? item.genres.map(g => g.name) : []
-                    }));
-                    renderAnime(formattedAnime);
+                if (data && data.data && data.data.Page.media.length > 0) {
+                    renderAnime(data.data.Page.media);
                 } else {
                     grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Ничего не найдено.</p>';
                 }
             } catch (error) {
                 console.error(error);
-                grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Ошибка подключения к API. Попробуйте позже.</p>';
+                grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Ошибка API. Попробуйте позже.</p>';
             }
         }
 
@@ -192,7 +186,7 @@
             timeout = setTimeout(() => fetchAnime(e.target.value), 500);
         });
 
-        // === 3. МОДАЛЬНОЕ ОКНО И ВЗАИМОДЕЙСТВИЕ ===
+        // === 3. МОДАЛЬНОЕ ОКНО ===
         const modal = document.getElementById('animeModal');
         document.getElementById('closeModal').onclick = () => modal.style.display = 'none';
         modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
@@ -210,7 +204,7 @@
             modal.style.display = 'flex';
         }
 
-        // === 4. АВТОРИЗАЦИЯ (Имитация через LocalStorage) ===
+        // === 4. АВТОРИЗАЦИЯ ===
         function saveUser() {
             const name = document.getElementById('userNameInput').value.trim();
             if (name) {
@@ -234,19 +228,19 @@
             }
         }
 
-        // === 5. КОММЕНТАРИИ И РЕЙТИНГИ (Supabase) ===
+        // === 5. КОММЕНТАРИИ И РЕЙТИНГИ ===
         async function loadCommentsAndRatings() {
             const list = document.getElementById('commentsList');
             list.innerHTML = 'Загрузка...';
             
             if (!supabaseClient) {
-                list.innerHTML = '<p style="color: red;">База данных не подключена (вставьте ключ Supabase в код).</p>';
+                list.innerHTML = '<p style="color: red;">Вставьте ключ Supabase в код.</p>';
                 return;
             }
 
             const { data, error } = await supabaseClient.from('comments').select('*').eq('anime_id', currentAnimeId).order('created_at', { ascending: false });
             
-            if (error) { list.innerHTML = 'Ошибка загрузки: ' + error.message; return; }
+            if (error) { list.innerHTML = 'Ошибка: ' + error.message; return; }
             if (data.length === 0) { list.innerHTML = '<p style="color: #666;">Пока нет комментариев.</p>'; return; }
 
             list.innerHTML = data.map(c => `<div class="comment-item"><div class="comment-user">${c.user_name}</div><div class="comment-text">${c.text}</div></div>`).join('');
@@ -254,7 +248,7 @@
 
         async function submitComment() {
             const user = localStorage.getItem('anime_user');
-            if (!user) { alert('Сначала войдите (введите имя)!'); return; }
+            if (!user) { alert('Сначала войдите!'); return; }
             const text = document.getElementById('commentInput').value.trim();
             if (!text) return;
 
@@ -269,7 +263,7 @@
 
         async function submitRating() {
             const user = localStorage.getItem('anime_user');
-            if (!user) { alert('Сначала войдите (введите имя)!'); return; }
+            if (!user) { alert('Сначала войдите!'); return; }
             const score = parseInt(document.getElementById('ratingSelect').value);
             
             if (!supabaseClient) { alert('База данных не подключена!'); return; }
@@ -278,7 +272,6 @@
             if (error) { alert('Ошибка: ' + error.message); } else { alert('Оценка сохранена!'); }
         }
 
-        // Инициализация
         fetchAnime();
     </script>
 </body>
