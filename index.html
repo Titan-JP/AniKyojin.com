@@ -136,19 +136,22 @@
         async function fetchAnime(searchTerm = '') {
             grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Загрузка...</p>';
             try {
-                // API Shikimori (не требует прокси)
-                const url = searchTerm 
+                // ВАШ URL CLOUDFLARE WORKER
+                const PROXY_URL = 'https://anikyo-proxy.ryclan228877.workers.dev';
+                
+                const targetUrl = searchTerm 
                     ? `https://shikimori.one/api/animes?search=${encodeURIComponent(searchTerm)}&limit=24` 
                     : `https://shikimori.one/api/animes?limit=24&order=popularity`;
                 
-                const response = await fetch(url, {
-                    headers: { 'User-Agent': 'AniKyoJin/1.0' } // Shikimori требует User-Agent
+                const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(targetUrl)}`;
+                
+                const response = await fetch(proxyUrl, {
+                    headers: { 'User-Agent': 'AniKyoJin/1.0' }
                 });
                 
                 const data = await response.json();
                 
                 if (data && data.length > 0) {
-                    // Преобразуем данные Shikimori в формат, который ожидает ваш renderAnime
                     const formattedAnime = data.map(item => ({
                         id: item.id,
                         title: { romaji: item.russian || item.name, english: item.name },
@@ -163,7 +166,7 @@
                 }
             } catch (error) {
                 console.error(error);
-                grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Ошибка API Shikimori. Попробуйте позже.</p>';
+                grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Ошибка API. Попробуйте позже.</p>';
             }
         }
 
