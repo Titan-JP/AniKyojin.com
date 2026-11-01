@@ -146,7 +146,7 @@
             grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Загрузка...</p>';
             try {
                 // ИСПОЛЬЗУЕМ ПРОКСИ ДЛЯ ОБХОДА БЛОКИРОВОК
-                const response = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://graphql.anilist.co'), {
+                const response = await fetch('https://graphql.anilist.co', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify({ query: query, variables: { search: searchTerm } })
