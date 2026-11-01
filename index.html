@@ -136,35 +136,34 @@
         async function fetchAnime(searchTerm = '') {
             grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Загрузка...</p>';
             try {
-                // Запрос к AniList через публичный прокси-сервер (обходим CORS и блокировки)
-                const targetUrl = 'https://graphql.anilist.co';
-                const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+                // API Shikimori (не требует прокси)
+                const url = searchTerm 
+                    ? `https://shikimori.one/api/animes?search=${encodeURIComponent(searchTerm)}&limit=24` 
+                    : `https://shikimori.one/api/animes?limit=24&order=popularity`;
                 
-                const query = `
-                query ($search: String) {
-                  Page (page: 1, perPage: 24) {
-                    media (search: $search, type: ANIME, sort: POPULARITY_DESC) {
-                      id title { romaji english } coverImage { large } averageScore description genres
-                    }
-                  }
-                }`;
-
-                const response = await fetch(proxyUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify({ query: query, variables: { search: searchTerm } })
+                const response = await fetch(url, {
+                    headers: { 'User-Agent': 'AniKyoJin/1.0' } // Shikimori требует User-Agent
                 });
                 
                 const data = await response.json();
                 
-                if (data && data.data && data.data.Page.media.length > 0) {
-                    renderAnime(data.data.Page.media);
+                if (data && data.length > 0) {
+                    // Преобразуем данные Shikimori в формат, который ожидает ваш renderAnime
+                    const formattedAnime = data.map(item => ({
+                        id: item.id,
+                        title: { romaji: item.russian || item.name, english: item.name },
+                        coverImage: { large: `https://shikimori.one${item.image.original}` },
+                        averageScore: item.score ? item.score * 10 : null,
+                        description: item.description || 'Описание отсутствует.',
+                        genres: item.genres ? item.genres.map(g => g.russian || g.name) : []
+                    }));
+                    renderAnime(formattedAnime);
                 } else {
                     grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Ничего не найдено.</p>';
                 }
             } catch (error) {
                 console.error(error);
-                grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Ошибка API. Попробуйте позже.</p>';
+                grid.innerHTML = '<p style="text-align: center; width: 100%; grid-column: 1 / -1;">Ошибка API Shikimori. Попробуйте позже.</p>';
             }
         }
 
