@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<!-- Библиотека Supabase -->
+<!-- Библиотека Supabase через ваш прокси -->
 <script src="https://anikyo-proxy.ryclan228877.workers.dev/?url=https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -107,12 +107,20 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg-ma
 const PROXY_URL = 'https://anikyo-proxy.ryclan228877.workers.dev';
 
 // ВАШИ ДАННЫЕ ИЗ SUPABASE
-const SUPABASE_URL = 'https://anikyo-proxy.ryclan228877.workers.dev/?url=https://rqxjseopwqrbegccvtz.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_ISGDhFIAiMLep30jIPbgLQ_MtFhCqtb'; // ВСТАВЬТЕ ВАШ КЛЮЧ sb_publishable_...
+const SUPABASE_URL = 'https://rqxjseopwqrbegccvtz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ISGDhFIAiMLep30jIPbgLQ_MtFhCqtb';
 
 let supabaseClient = null;
 if (SUPABASE_KEY !== 'ВАШ_КЛЮЧ_ЗДЕСЬ') {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Создаем клиент с кастомным fetch, который отправляет запросы через ваш Cloudflare Worker
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        global: {
+            fetch: (url, options) => {
+                const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(url)}`;
+                return fetch(proxyUrl, options);
+            }
+        }
+    });
 }
 
 let currentAnimeId = null;
