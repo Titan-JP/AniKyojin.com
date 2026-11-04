@@ -8,8 +8,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<!-- Библиотека Supabase -->
-<script src="https://anikyo-proxy.ryclan228877.workers.dev/?url=https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- 
+  ВАЖНО: Библиотека Supabase загружается локально из вашего репозитория.
+  Убедитесь, что файл supabase.js лежит рядом с index.html на GitHub!
+-->
+<script src="supabase.js"></script>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg-main:#0b0e14;--bg-card:#151a24;--bg-hover:#1e2532;--bg-nav:rgba(11,14,20,.88);--acc-cyan:#00d2ff;--acc-blue:#3b82f6;--acc-gradient:linear-gradient(135deg,#00d2ff 0%,#3b82f6 100%);--txt-primary:#f3f4f6;--txt-muted:#9ca3af;--bd-color:rgba(255,255,255,.08);--shadow-glow:0 8px 25px rgba(0,210,255,.18);--radius-lg:14px;--radius-md:10px;--radius-sm:6px}
@@ -104,12 +109,11 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg-ma
 
 <script>
 // ========== НАСТРОЙКИ ==========
-// Используем ваш Cloudflare Worker для проксирования
+// Используем ваш Cloudflare Worker для проксирования запросов к аниме и базе данных
 const PROXY_URL = 'https://anikyo-proxy.ryclan228877.workers.dev';
 
 // ВАШИ ДАННЫЕ ИЗ SUPABASE
 const SUPABASE_URL = 'https://rqxjseopwqrbegccvtz.supabase.co';
-// ВАШ КЛЮЧ УЖЕ ВСТАВЛЕН
 const SUPABASE_KEY = 'sb_publishable_ISGDhFIAiMLep30jIPbgLQ_MtFhCqtb';
 
 let supabaseClient = null;
