@@ -144,7 +144,7 @@ async function getTop() {
         id: item.id,
         title: item.russian || item.name,
         img: `https://shikimori.one${item.image.original}`,
-        score: item.score ? item.score.toFixed(1) : '?',
+        score: (typeof item.score === 'number') ? item.score.toFixed(1) : (item.score || '?'),
         eps: item.episodes,
         year: item.aired_on ? item.aired_on.split('-')[0] : '?',
         status: item.status === 'released' ? 'Выход завершен' : 'Онгоинг',
@@ -195,7 +195,7 @@ async function openA(id) {
     const anime = {
         title: data.russian || data.name,
         img: `https://shikimori.one${data.image.original}`,
-        score: data.score ? data.score.toFixed(1) : '?',
+        score: (typeof data.score === 'number') ? data.score.toFixed(1) : (data.score || '?'),
         eps: data.episodes,
         year: data.aired_on ? data.aired_on.split('-')[0] : '?',
         status: data.status === 'released' ? 'Выход завершен' : 'Онгоинг',
