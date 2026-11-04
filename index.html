@@ -8,8 +8,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<!-- Библиотека Supabase через ваш прокси -->
-<script src="https://anikyo-proxy.ryclan228877.workers.dev/?url=https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- 
+  Библиотека Supabase. 
+  Если она не грузится, раскомментируйте строку ниже (уберите <!-- и -->) и закомментируйте текущую.
+  <script src="https://anikyo-proxy.ryclan228877.workers.dev/?url=https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg-main:#0b0e14;--bg-card:#151a24;--bg-hover:#1e2532;--bg-nav:rgba(11,14,20,.88);--acc-cyan:#00d2ff;--acc-blue:#3b82f6;--acc-gradient:linear-gradient(135deg,#00d2ff 0%,#3b82f6 100%);--txt-primary:#f3f4f6;--txt-muted:#9ca3af;--bd-color:rgba(255,255,255,.08);--shadow-glow:0 8px 25px rgba(0,210,255,.18);--radius-lg:14px;--radius-md:10px;--radius-sm:6px}
@@ -104,7 +108,8 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg-ma
 
 <script>
 // ========== НАСТРОЙКИ ==========
-const PROXY_URL = 'https://anikyo-proxy.ryclan228877.workers.dev';
+// Используем публичный прокси для обхода ошибки DNS Cloudflare
+const PROXY_URL = 'https://corsproxy.io/?';
 
 // ВАШИ ДАННЫЕ ИЗ SUPABASE
 const SUPABASE_URL = 'https://rqxjseopwqrbegccvtz.supabase.co';
@@ -112,11 +117,11 @@ const SUPABASE_KEY = 'sb_publishable_ISGDhFIAiMLep30jIPbgLQ_MtFhCqtb';
 
 let supabaseClient = null;
 if (SUPABASE_KEY !== 'ВАШ_КЛЮЧ_ЗДЕСЬ') {
-    // Создаем клиент с кастомным fetch, который отправляет запросы через ваш Cloudflare Worker
+    // Создаем клиент с кастомным fetch, который отправляет запросы через прокси
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         global: {
             fetch: (url, options) => {
-                const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(url)}`;
+                const proxyUrl = `${PROXY_URL}url=${encodeURIComponent(url)}`;
                 return fetch(proxyUrl, options);
             }
         }
@@ -127,7 +132,7 @@ let currentAnimeId = null;
 
 // ========== API ФУНКЦИИ ==========
 async function fetchFromProxy(targetUrl) {
-    const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(targetUrl)}`;
+    const proxyUrl = `${PROXY_URL}url=${encodeURIComponent(targetUrl)}`;
     const response = await fetch(proxyUrl, { headers: { 'User-Agent': 'AniKyoJin/1.0' } });
     if (!response.ok) throw new Error('Proxy error');
     return await response.json();
