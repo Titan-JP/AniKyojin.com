@@ -9,10 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-<!-- 
-  ВАЖНО: Библиотека Supabase загружается локально из вашего репозитория.
-  Убедитесь, что файл supabase.js лежит рядом с index.html на GitHub!
--->
+<!-- Библиотека Supabase загружается локально (файл supabase.js в репозитории) -->
 <script src="supabase.js"></script>
 
 <style>
@@ -109,7 +106,7 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg-ma
 
 <script>
 // ========== НАСТРОЙКИ ==========
-// Используем ваш Cloudflare Worker для проксирования запросов к аниме и базе данных
+// Для загрузки аниме используем ваш Cloudflare Worker
 const PROXY_URL = 'https://anikyo-proxy.ryclan228877.workers.dev';
 
 // ВАШИ ДАННЫЕ ИЗ SUPABASE
@@ -118,12 +115,12 @@ const SUPABASE_KEY = 'sb_publishable_ISGDhFIAiMLep30jIPbgLQ_MtFhCqtb';
 
 let supabaseClient = null;
 if (SUPABASE_KEY !== 'ВАШ_КЛЮЧ_ЗДЕСЬ') {
-    // Создаем клиент с кастомным fetch, который отправляет запросы через ваш прокси
+    // Создаем клиент с кастомным fetch, который использует corsproxy.io для базы данных
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         global: {
             fetch: (url, options) => {
-                // Оборачиваем URL в ваш Worker, чтобы обойти CORS и DNS
-                const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(url)}`;
+                // Используем corsproxy.io, чтобы обойти ошибку 1016 (DNS error)
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
                 return fetch(proxyUrl, options);
             }
         }
