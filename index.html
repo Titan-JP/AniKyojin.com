@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<!-- Библиотека Supabase -->
+<script src="https://anikyo-proxy.ryclan228877.workers.dev/?url=https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg-main:#0b0e14;--bg-card:#151a24;--bg-hover:#1e2532;--bg-nav:rgba(11,14,20,.88);--acc-cyan:#00d2ff;--acc-blue:#3b82f6;--acc-gradient:linear-gradient(135deg,#00d2ff 0%,#3b82f6 100%);--txt-primary:#f3f4f6;--txt-muted:#9ca3af;--bd-color:rgba(255,255,255,.08);--shadow-glow:0 8px 25px rgba(0,210,255,.18);--radius-lg:14px;--radius-md:10px;--radius-sm:6px}
@@ -92,6 +94,7 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg-ma
   </div>
 </header>
 <div id="app"></div>
+
 <div class="modal" id="modal" onclick="if(event.target===this)closeM()">
   <div class="mbox">
     <button class="mclose" onclick="closeM()"><i class="fa-solid fa-xmark"></i></button>
@@ -101,63 +104,46 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg-ma
 
 <script>
 // ========== НАСТРОЙКИ ==========
-// ВАШ URL CLOUDFLARE WORKER
 const PROXY_URL = 'https://anikyo-proxy.ryclan228877.workers.dev';
-const CACHE_PREFIX = "asc_";
-const TTL = { home: 45 * 60 * 1000 };
 
-function cacheGet(key) {
-  try {
-    const raw = localStorage.getItem(CACHE_PREFIX + key);
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    if (!obj || obj.exp < Date.now()) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
-    return obj.data;
-  } catch (e) { return null; }
-}
-function cacheSet(key, data, ttlMs) {
-  try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ exp: Date.now() + ttlMs, data })); } catch (e) {}
+// ВАШИ ДАННЫЕ ИЗ SUPABASE
+const SUPABASE_URL = 'https://rqxjseopwqrbegccvtz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ISGDhFIAiMLep30jIPbgLQ_MtFhCqtb'; // ВСТАВЬТЕ ВАШ КЛЮЧ sb_publishable_...
+
+let supabaseClient = null;
+if (SUPABASE_KEY !== 'ВАШ_КЛЮЧ_ЗДЕСЬ') {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
-async function fetchFromProxy(targetUrl, method = 'GET', body = null) {
+let currentAnimeId = null;
+
+// ========== API ФУНКЦИИ ==========
+async function fetchFromProxy(targetUrl) {
     const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(targetUrl)}`;
-    const options = {
-        method: method,
-        headers: { 'User-Agent': 'AniKyoJin/1.0' }
-    };
-    if (body) {
-        options.headers['Content-Type'] = 'application/json';
-        options.body = JSON.stringify(body);
-    }
-    const response = await fetch(proxyUrl, options);
+    const response = await fetch(proxyUrl, { headers: { 'User-Agent': 'AniKyoJin/1.0' } });
     if (!response.ok) throw new Error('Proxy error');
     return await response.json();
 }
 
 async function getTop() {
-  const ck = "home_top_v3";
-  const hit = cacheGet(ck);
-  if (hit) return hit;
-  try {
-    const data = await fetchFromProxy('https://shikimori.one/api/animes?limit=20&order=popularity');
-    const formatted = data.map(item => ({
-        id: item.id,
-        title: item.russian || item.name,
-        img: `https://shikimori.one${item.image.original}`,
-        score: (typeof item.score === 'number') ? item.score.toFixed(1) : (item.score || '?'),
-        eps: item.episodes,
-        year: item.aired_on ? item.aired_on.split('-')[0] : '?',
-        status: item.status === 'released' ? 'Выход завершен' : 'Онгоинг',
-        type: 'TV',
-        syn: item.description || '',
-        genres: item.genres ? item.genres.map(g => g.russian || g.name) : []
-    }));
-    cacheSet(ck, formatted, TTL.home);
-    return formatted;
-  } catch (e) {
-    console.error(e);
-    return [];
-  }
+    try {
+        const data = await fetchFromProxy('https://shikimori.one/api/animes?limit=20&order=popularity');
+        return data.map(item => ({
+            id: item.id,
+            title: item.russian || item.name,
+            img: `https://shikimori.one${item.image.original}`,
+            score: (typeof item.score === 'number') ? item.score.toFixed(1) : (item.score || '?'),
+            eps: item.episodes,
+            year: item.aired_on ? item.aired_on.split('-')[0] : '?',
+            status: item.status === 'released' ? 'Выход завершен' : 'Онгоинг',
+            type: 'TV',
+            syn: item.description || '',
+            genres: item.genres ? item.genres.map(g => g.russian || g.name) : []
+        }));
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
 }
 
 function card(a) {
@@ -181,12 +167,12 @@ async function goHome() {
     <h1>${h.title}</h1><div class="tags">${h.genres.slice(0, 3).map(g => `<span>${g}</span>`).join("")}</div>
     <p class="synopsis">${h.syn.slice(0, 200)}...</p>
     <div class="hero-actions"><button class="btn btn-p" onclick="openA(${h.id})"><i class="fa-solid fa-play"></i> Смотреть</button></div>`;
-  } else {
-    document.getElementById("rg").innerHTML = '<div class="load">Ошибка загрузки API. Попробуйте позже.</div>';
   }
 }
 
+// ========== ОКНО АНИМЕ + ОТЗЫВЫ ==========
 async function openA(id) {
+  currentAnimeId = id.toString();
   document.getElementById("modal").classList.add("open");
   document.getElementById("mct").innerHTML = '<div class="load"><i class="fa-solid fa-spinner"></i>Загрузка информации...</div>';
   
@@ -222,17 +208,159 @@ async function openA(id) {
         </div>
       </div>
       <div class="syn">${anime.syn}</div>
-      <div style="text-align:center; padding: 20px; color: var(--txt-muted); border: 1px dashed var(--bd-color); border-radius: 10px;">
+
+      <div style="text-align:center; padding: 20px; color: var(--txt-muted); border: 1px dashed var(--bd-color); border-radius: 10px; margin-bottom: 20px;">
           <i class="fa-solid fa-video" style="font-size: 2rem; margin-bottom: 10px; color: var(--acc-cyan)"></i>
-          <p>Плеер будет добавлен на следующем этапе.</p>
+          <p>Плеер появится на следующем этапе.</p>
       </div>
+
+      <div class="interaction-section" style="background: var(--bg-card); padding: 20px; border-radius: 10px; border: 1px solid var(--bd-color);">
+          <h3 style="margin-bottom: 15px; color: var(--acc-cyan);">Ваш отзыв</h3>
+          
+          <div id="authSection" style="margin-bottom: 15px;">
+              <p style="font-size: 0.85rem; color: var(--txt-muted); margin-bottom: 10px;">Войдите, чтобы оставить комментарий:</p>
+              <div id="telegram-container"></div>
+          </div>
+          
+          <div id="loggedInSection" style="display: none; margin-bottom: 15px;">
+              <span>Вы вошли как: <b id="currentUserName" style="color: var(--acc-cyan);"></b></span>
+              <button onclick="logout()" style="margin-left: 10px; background: transparent; border: 1px solid #444; color: #ccc; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Выйти</button>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+              <select id="ratingSelect" style="padding: 10px; border-radius: 5px; background: #111; color: white; border: 1px solid #444;">
+                  <option value="10">10 ★</option>
+                  <option value="9">9 ★</option>
+                  <option value="8">8 ★</option>
+                  <option value="7">7 ★</option>
+                  <option value="6">6 ★</option>
+                  <option value="5">5 ★</option>
+                  <option value="4">4 ★</option>
+                  <option value="3">3 ★</option>
+                  <option value="2">2 ★</option>
+                  <option value="1">1 ★</option>
+              </select>
+              <button class="btn btn-p" onclick="submitRating()" style="padding: 10px 15px; font-size: 0.85rem;">Оценить</button>
+          </div>
+
+          <h4 style="margin-bottom: 10px;">Комментарии</h4>
+          <div id="commentsList" style="margin-bottom: 15px; max-height: 200px; overflow-y: auto; font-size: 0.9rem;"></div>
+          
+          <div style="display: flex; gap: 10px;">
+              <input type="text" id="commentInput" placeholder="Написать комментарий..." style="flex: 1; padding: 10px; border-radius: 5px; background: #111; border: 1px solid #444; color: white;">
+              <button class="btn btn-p" onclick="submitComment()" style="padding: 10px 15px; font-size: 0.85rem;">Отправить</button>
+          </div>
+      </div>
+
     </div>`;
+
+    checkAuth();
+    loadCommentsAndRatings();
+
   } catch (e) {
+    console.error(e);
     document.getElementById("mct").innerHTML = '<div class="load">Ошибка загрузки информации.</div>';
   }
 }
 
 function closeM() { document.getElementById("modal").classList.remove("open"); }
+
+// ========== АВТОРИЗАЦИЯ (TELEGRAM) ==========
+function onTelegramAuth(user) {
+    fetch(`${PROXY_URL}/verify-telegram`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.verified) {
+            localStorage.setItem('anime_user', data.username);
+            checkAuth();
+            alert('Вход через Telegram успешен!');
+        } else {
+            alert('Ошибка проверки Telegram');
+        }
+    })
+    .catch(err => alert('Ошибка сети: ' + err.message));
+}
+
+function logout() {
+    localStorage.removeItem('anime_user');
+    checkAuth();
+}
+
+function checkAuth() {
+    const user = localStorage.getItem('anime_user');
+    const authSection = document.getElementById('authSection');
+    const loggedInSection = document.getElementById('loggedInSection');
+    
+    if (user) {
+        authSection.style.display = 'none';
+        loggedInSection.style.display = 'block';
+        document.getElementById('currentUserName').textContent = user;
+    } else {
+        authSection.style.display = 'block';
+        loggedInSection.style.display = 'none';
+        
+        const container = document.getElementById('telegram-container');
+        container.innerHTML = '';
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = "https://telegram.org/js/telegram-widget.js?22";
+        script.setAttribute('data-telegram-login', 'AniKyoJinAuthBot');
+        script.setAttribute('data-size', 'medium');
+        script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+        script.setAttribute('data-request-access', 'write');
+        container.appendChild(script);
+    }
+}
+
+// ========== БАЗА ДАННЫХ (SUPABASE) ==========
+async function loadCommentsAndRatings() {
+    const list = document.getElementById('commentsList');
+    list.innerHTML = 'Загрузка...';
+    
+    if (!supabaseClient) {
+        list.innerHTML = '<p style="color: red;">База данных не подключена (вставьте ключ).</p>';
+        return;
+    }
+
+    const { data, error } = await supabaseClient.from('comments').select('*').eq('anime_id', currentAnimeId).order('created_at', { ascending: false });
+    
+    if (error) { list.innerHTML = 'Ошибка загрузки: ' + error.message; return; }
+    if (data.length === 0) { list.innerHTML = '<p style="color: #666;">Пока нет комментариев.</p>'; return; }
+
+    list.innerHTML = data.map(c => `<div style="border-bottom: 1px solid #333; padding: 10px 0;"><div style="font-weight: bold; color: var(--acc-cyan);">${c.user_name}</div><div style="margin: 5px 0; color: #ccc;">${c.text}</div></div>`).join('');
+}
+
+async function submitComment() {
+    const user = localStorage.getItem('anime_user');
+    if (!user) { alert('Сначала войдите через Telegram!'); return; }
+    const text = document.getElementById('commentInput').value.trim();
+    if (!text) return;
+
+    if (!supabaseClient) { alert('База данных не подключена!'); return; }
+
+    const { error } = await supabaseClient.from('comments').insert([{ anime_id: currentAnimeId, user_name: user, text: text }]);
+    if (error) { alert('Ошибка: ' + error.message); } else {
+        document.getElementById('commentInput').value = '';
+        loadCommentsAndRatings();
+    }
+}
+
+async function submitRating() {
+    const user = localStorage.getItem('anime_user');
+    if (!user) { alert('Сначала войдите через Telegram!'); return; }
+    const score = parseInt(document.getElementById('ratingSelect').value);
+    
+    if (!supabaseClient) { alert('База данных не подключена!'); return; }
+
+    const { error } = await supabaseClient.from('ratings').upsert({ anime_id: currentAnimeId, user_name: user, score: score }, { onConflict: 'anime_id, user_name' });
+    if (error) { alert('Ошибка: ' + error.message); } else { alert('Оценка сохранена!'); }
+}
+
+// Запуск
 goHome();
 </script>
 </body>
