@@ -115,12 +115,12 @@ const SUPABASE_KEY = 'sb_publishable_ISGDhFIAiMLep30jIPbgLQ_MtFhCqtb';
 
 let supabaseClient = null;
 if (SUPABASE_KEY !== 'ВАШ_КЛЮЧ_ЗДЕСЬ') {
-    // Создаем клиент с кастомным fetch, который использует corsproxy.io для базы данных
+    // Создаем клиент с кастомным fetch, который использует allorigins для базы данных
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
         global: {
             fetch: (url, options) => {
-                // Используем corsproxy.io, чтобы обойти ошибку 1016 (DNS error)
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                // Используем allorigins.win, чтобы обойти ошибку 1016
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
                 return fetch(proxyUrl, options);
             }
         }
